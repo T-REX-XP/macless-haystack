@@ -1,39 +1,53 @@
 version: "3"
 services:
-    anisette-v3-server:
-        restart: always
-        container_name: anisette
-        ports:
-            - 6969:6969
-        volumes:
-            - anisette-v3_data:/home/Alcoholic/.config/anisette-v3/lib/
-        networks:
-            - mh-network
-        image: dadoum/anisette-v3-server
+  anisette-v3-server:
+    restart: always
+    container_name: anisette
+    ports:
+      - 6969:6969
+    volumes:
+      - anisette-v3_data:/home/Alcoholic/.config/anisette-v3/lib/
+    networks:
+      - mh-network
+    image: dadoum/anisette-v3-server
 
-    macless-haystack:
-        stdin_open: true
-        tty: true
-        restart: unless-stopped
-        container_name: macless-haystack
-        ports:
-            - 6176:6176
-        volumes:
-            - mh_data:/app/endpoint/data
-        networks:
-            - mh-network
-        image: christld/macless-haystack
-        depends_on: 
-            - anisette-v3-server
+  macless-haystack:
+    stdin_open: true
+    tty: true
+    restart: unless-stopped
+    container_name: macless-haystack
+    ports:
+      - 6176:6176
+    volumes:
+      - mh_data:/app/endpoint/data
+    networks:
+      - mh-network
+    image: christld/macless-haystack
+    depends_on:
+      - anisette-v3-server
+
+  macless-haystack-ui:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        - GITHUB_REPO=dchristl/macless-haystack
+        - RELEASE_TAG=v2.1.0
+    ports:
+      - "8080:80"
+    restart: always
+    depends_on:
+      - macless-haystack
 
 networks:
-    mh-network:
-        external: true
-        name: mh-network
+  mh-network:
+    external: true
+    name: mh-network
+
 volumes:
-    anisette-v3_data:
-        external: true
-        name: anisette-v3_data
-    mh_data:
-        external: true
-        name: mh_data
+  anisette-v3_data:
+    external: true
+    name: anisette-v3_data
+  mh_data:
+    external: true
+    name: mh_data
