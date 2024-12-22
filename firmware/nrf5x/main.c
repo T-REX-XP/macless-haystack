@@ -7,7 +7,8 @@
 #include "openhaystack.h"
 #include "app_timer.h"
 #include "battery.h"
-
+#include "nrf_bootloader_info.h"
+#include "nrf_pwr_mgmt.h"
 
 #define ADVERTISING_INTERVAL 5000  // advertising interval in milliseconds
 #define KEY_CHANGE_INTERVAL_MINUTES 30  // how often to rotate to new key in minutes
@@ -107,6 +108,19 @@ static void battery_status_update_timer_config(void)
 }
 
 /**
+ * Function to trigger DFU mode. This sets a special register (GPREGRET)
+ * and resets the device so the bootloader enters DFU mode on restart.
+ */
+void enter_dfu_mode(void)
+{
+    // Set GPREGRET to tell the bootloader to enter DFU mode
+    sd_power_gpregret_set(0, BOOTLOADER_DFU_START);
+
+    // Perform a system reset to jump to bootloader
+    NVIC_SystemReset();
+}
+
+/**
  * main function
  */
 int main(void) {
@@ -121,7 +135,7 @@ int main(void) {
         }
     }
 
-    // Init BLE stack and softdevice
+    // Initialize BLE stack and SoftDevice
     init_ble();
     
     // Only use the app_timer to rotate keys if we need to
@@ -134,6 +148,14 @@ int main(void) {
         battery_status_update_timer_config();
     }
 
+    // Check if a button is pressed to enter DFU mode
+    if (bsp_board_button_state_get(BSP_BOARD_BUTTON_0) == 1)
+    {
+        // Trigger DFU mode if the button is pressed
+        enter_dfu_mode();
+    }
+
+    // Main loop
     while (1){
         power_manage();
     }
