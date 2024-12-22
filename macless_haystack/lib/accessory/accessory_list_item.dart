@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:latlong2/latlong.dart';
-import 'package:macless_haystack/accessory/Accessory_List_Item_Battery.dart';
+import 'package:macless_haystack/accessory/accessory_List_Item_Battery.dart';
 import 'package:macless_haystack/accessory/accessory_icon.dart';
 import 'package:macless_haystack/accessory/accessory_model.dart';
 import 'package:intl/intl.dart';
