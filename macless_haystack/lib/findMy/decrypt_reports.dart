@@ -1,9 +1,11 @@
 import 'dart:typed_data';
 
 import 'package:pointycastle/export.dart';
+
 // ignore: implementation_imports
 import 'package:pointycastle/src/utils.dart' as pc_utils;
 import 'package:macless_haystack/findMy/models.dart';
+import 'package:macless_haystack/accessory/accessory_battery.dart';
 
 class DecryptReports {
   /// Decrypts a given [FindMyReport] with the given private key.
@@ -12,9 +14,10 @@ class DecryptReports {
     final curveDomainParam = ECCurve_secp224r1();
 
     final payloadData = report.payload;
-    final ephemeralKeyBytes = payloadData.sublist(5, 62);
-    final encData = payloadData.sublist(62, 72);
-    final tag = payloadData.sublist(72, payloadData.length);
+    final ephemeralKeyBytes = payloadData.sublist(
+        payloadData.length - 16 - 10 - 57, payloadData.length - 16 - 10);
+    final encData = payloadData.sublist(payloadData.length - 16 - 10, payloadData.length - 16);
+    final tag = payloadData.sublist(payloadData.length - 16, payloadData.length);
 
     _decodeTimeAndConfidence(payloadData, report);
 
@@ -38,7 +41,8 @@ class DecryptReports {
       Uint8List payloadData, FindMyReport report) {
     final seenTimeStamp =
         payloadData.sublist(0, 4).buffer.asByteData().getInt32(0, Endian.big);
-    final timestamp = DateTime.utc(2001).add(Duration(seconds: seenTimeStamp)).toLocal();
+    final timestamp =
+        DateTime.utc(2001).add(Duration(seconds: seenTimeStamp)).toLocal();
     final confidence = payloadData.elementAt(4);
     report.timestamp = timestamp;
     report.confidence = confidence;
@@ -62,12 +66,34 @@ class DecryptReports {
     final latitude = payload.buffer.asByteData(0, 4).getUint32(0, Endian.big);
     final longitude = payload.buffer.asByteData(4, 4).getUint32(0, Endian.big);
     final accuracy = payload.buffer.asByteData(8, 1).getUint8(0);
+    final status = payload.buffer.asByteData(9, 1).getUint8(0);
+    AccessoryBatteryStatus batteryStatus = AccessoryBatteryStatus.unknown;
+
+    if (status & 0x20 != 0) // Check if battery status updates are supported
+    {
+      switch ((status >> 6) & 0x3) { // get highest 2 bits
+        case 0:
+          batteryStatus = AccessoryBatteryStatus.ok;
+          break;
+        case 1:
+          batteryStatus = AccessoryBatteryStatus.medium;
+          break;
+        case 2:
+          batteryStatus = AccessoryBatteryStatus.low;
+          break;
+        case 3:
+          batteryStatus = AccessoryBatteryStatus.criticalLow;
+          break;
+        default:
+          batteryStatus = AccessoryBatteryStatus.ok;
+      }
+    } 
 
     final latitudeDec = latitude / 10000000.0;
     final longitudeDec = longitude / 10000000.0;
 
     return FindMyLocationReport(latitudeDec, longitudeDec, accuracy,
-        report.datePublished, report.timestamp, report.confidence);
+        report.datePublished, report.timestamp, report.confidence, batteryStatus);
   }
 
   /// Decrypts the given cipher text with the key data using an AES-GCM block cipher.

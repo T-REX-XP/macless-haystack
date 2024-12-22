@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:geocoding/geocoding.dart';
+import 'package:macless_haystack/accessory/accessory_battery.dart';
 import 'package:macless_haystack/accessory/accessory_icon_model.dart';
 import 'package:macless_haystack/findMy/find_my_controller.dart';
 import 'package:macless_haystack/location/location_model.dart';
@@ -81,12 +82,18 @@ class Accessory {
   /// (null if no location known).
   LatLng? _lastLocation;
 
+  /// The last known battery status
+  /// (null if battery data not found)
+  AccessoryBatteryStatus? lastBatteryStatus;
+
   /// A list of known locations over time.
   List<Pair<dynamic, dynamic>> locationHistory = [];
   Set<String> hashes = {};
 
   /// Stores address information about the current location.
   Future<Placemark?> place = Future.value(null);
+
+  LocationModel locationModel = LocationModel();
 
   /// Creates an accessory with the given properties.
   Accessory(
@@ -113,7 +120,7 @@ class Accessory {
 
   void _init() {
     if (_lastLocation != null) {
-      place = LocationModel.getAddress(_lastLocation!);
+      place = locationModel.getAddress(_lastLocation!);
     }
   }
 
@@ -160,7 +167,7 @@ class Accessory {
   set lastLocation(LatLng? newLocation) {
     _lastLocation = newLocation;
     if (_lastLocation != null) {
-      place = LocationModel.getAddress(_lastLocation!);
+      place = locationModel.getAddress(_lastLocation!);
     }
   }
 
@@ -208,6 +215,9 @@ class Accessory {
         lastDerivationTimestamp = json['lastDerivationTimestamp'],
         updateInterval = json['updateInterval'],
         oldestRelevantSymmetricKey = json['oldestRelevantSymmetricKey'],
+        hashes = json['hashes'] != null
+            ? (json['hashes'] as List).map((e) => e.toString()).toSet()
+            : <String>{},
         additionalKeys =
             json['additionalKeys']?.cast<String>() ?? List.empty() {
     _init();
@@ -234,6 +244,7 @@ class Accessory {
         'icon': _icon,
         'color': color.toString().split('(0x')[1].split(')')[0],
         'usesDerivation': usesDerivation,
+        'hashes': hashes.toList(),
         'symmetricKey': symmetricKey,
         'lastDerivationTimestamp': lastDerivationTimestamp,
         'updateInterval': updateInterval,

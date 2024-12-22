@@ -2,13 +2,11 @@
 
 import json
 import ssl
-import sys
 import os
 import requests
 from datetime import datetime
 import time
 import config
-from http.client import HTTPConnection
 import base64
 from collections import OrderedDict
 
@@ -28,6 +26,7 @@ class ServerHandler(BaseHTTPRequestHandler):
         self.send_header("Access-Control-Allow-Headers", "X-Requested-With")
         self.send_header("Access-Control-Allow-Headers", "Content-Type")
         self.send_header("Access-Control-Allow-Headers", "Authorization")
+        self.send_header("Access-Control-Allow-Private-Network","true")
 
     def authenticate(self):
         user = config.getEndpointUser()

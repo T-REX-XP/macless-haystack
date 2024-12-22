@@ -13,8 +13,10 @@ import 'package:macless_haystack/preferences/user_preferences_model.dart';
 const accessoryStorageKey = 'ACCESSORIES';
 const historStorageKey = 'HISTORY';
 
+const DEFAULT_MIN_ACCURACY = 50;
+
 class AccessoryRegistry extends ChangeNotifier {
-  final _storage = const FlutterSecureStorage();
+  var _storage = const FlutterSecureStorage();
   List<Accessory> _accessories = [];
   bool loading = false;
   bool initialLoadFinished = false;
@@ -54,6 +56,10 @@ class AccessoryRegistry extends ChangeNotifier {
     loading = false;
 
     notifyListeners();
+  }
+
+  set setStorage(FlutterSecureStorage s) {
+    _storage = s;
   }
 
   Future<void> loadHistory() async {
@@ -108,12 +114,16 @@ class AccessoryRegistry extends ChangeNotifier {
       if (reports.where((element) => !element.isEncrypted()).isNotEmpty) {
         var lastReport =
             reports.where((element) => !element.isEncrypted()).first;
-        var reportDate = lastReport.timestamp ?? lastReport.published;
+        var reportDate = (lastReport.timestamp ?? lastReport.published) ??
+            DateTime.fromMicrosecondsSinceEpoch(0);
         if (accessory.datePublished != null &&
-            reportDate!.isAfter(accessory.datePublished!)) {
+            reportDate.isAfter(accessory.datePublished!)) {
           accessory.datePublished = reportDate;
           accessory.lastLocation =
               LatLng(lastReport.latitude!, lastReport.longitude!);
+
+          // Update last battery status
+          accessory.lastBatteryStatus = lastReport.batteryStatus!;
         }
       }
       historyEntries[accessory] = fillLocationHistory(reports, accessory);
@@ -198,6 +208,7 @@ class AccessoryRegistry extends ChangeNotifier {
       var currHash = reports[i].hash;
       if (!accessory.containsHash(currHash)) {
         accessory.addDecryptedHash(currHash);
+        logger.d('Decrypting report $i of ${reports.length}');
         await reports[i].decrypt();
         decryptedReports.add(reports[i]);
       } else {
@@ -212,19 +223,25 @@ class AccessoryRegistry extends ChangeNotifier {
     accessory.clearHashesNotInList(hashes);
 //Sort by date
     decryptedReports.sort((a, b) {
-      var aDate = a.timestamp ?? a.published!;
-      var bDate = b.timestamp ?? b.published!;
+      var aDate = a.timestamp ?? DateTime(1970);
+      var bDate = b.timestamp ?? DateTime(1970);
       return aDate.compareTo(bDate);
     });
 
     //Update the latest timestamp
     if (decryptedReports.isNotEmpty) {
       var lastReport = decryptedReports[decryptedReports.length - 1];
-      var oldTs = accessory.datePublished;
-      accessory.lastLocation =
-          LatLng(lastReport.latitude!, lastReport.longitude!);
-      accessory.datePublished = lastReport.timestamp ?? lastReport.published;
-      if (oldTs == null || !oldTs.isAtSameMomentAs(accessory.datePublished!)) {
+      var oldTs = DateTime(1970);
+      var latestReportTS = lastReport.timestamp ?? DateTime(1971);
+      if (oldTs.isBefore(latestReportTS)) {
+        //only an actualization if oldTS is not set or is older than the latest of the new ones
+        accessory.lastLocation =
+            LatLng(lastReport.latitude!, lastReport.longitude!);
+        accessory.datePublished = latestReportTS;
+        //If battery status exists, update last battery status
+        if (lastReport.batteryStatus != null) {
+          accessory.lastBatteryStatus = lastReport.batteryStatus;
+        }
         notifyListeners(); //redraw the UI, if the timestamp has changed
       }
     }
@@ -232,9 +249,9 @@ class AccessoryRegistry extends ChangeNotifier {
 //add to history in correct order
     for (var i = 0; i < decryptedReports.length; i++) {
       FindMyLocationReport report = decryptedReports[i];
-      if (report.longitude!.abs() <= 180 &&
-          report.latitude!.abs() <= 90 &&
-          report.accuracy! < 100) {
+      if (report.accuracy! >= DEFAULT_MIN_ACCURACY &&
+          report.longitude!.abs() <= 180 &&
+          report.latitude!.abs() <= 90) {
         accessory.addLocationHistoryEntry(report);
       } else {
         logger.d(

@@ -145,7 +145,7 @@ void set_payload_from_key(uint8_t *payload, uint8_t *public_key)
     payload[29] = public_key[0] >> 6;
 }
 
-uint get_key_count()
+uint8_t get_key_count()
 {
     uint8_t keyCount[1];
     if (load_bytes_from_partition(keyCount, sizeof(keyCount), 0) != ESP_OK)
@@ -164,16 +164,16 @@ void app_main(void)
     esp_bt_controller_config_t bt_cfg = BT_CONTROLLER_INIT_CONFIG_DEFAULT();
     esp_bt_controller_init(&bt_cfg);
     esp_bt_controller_enable(ESP_BT_MODE_BLE);
-
-    esp_bluedroid_init();
+    esp_bluedroid_config_t bluedroid_cfg = BT_BLUEDROID_INIT_CONFIG_DEFAULT();
+    esp_bluedroid_init_with_cfg(&bluedroid_cfg);
     esp_ble_tx_power_set(ESP_BLE_PWR_TYPE_ADV, ESP_PWR_LVL_P9);
     esp_bluedroid_enable();
 
     ESP_LOGI(LOG_TAG, "application initialized");
 
     /* Start with a random index */
-    uint key_count = get_key_count();
-    uint key_index = (esp_random() % key_count);
+    uint8_t key_count = get_key_count();
+    uint8_t key_index = (esp_random() % key_count);
     uint8_t cycle = 0;
     while (true)
     {
