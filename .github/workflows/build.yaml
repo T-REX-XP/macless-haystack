@@ -104,16 +104,16 @@ jobs:
         with:
           name: webapplication
           path: ./macless_haystack/build/webapplication
-      - name: Android Build
-        working-directory: ./macless_haystack
-        run: |
-          flutter build apk  --release
-          mv build/app/outputs/flutter-apk/app-release.apk build/app/outputs/flutter-apk/android-application.apk
-      - name: Upload Android Artifacts
-        uses: actions/upload-artifact@v3
-        with:
-          name: android-application
-          path: ./macless_haystack/build/app/outputs/flutter-apk/android-application.apk
+      # - name: Android Build
+      #   working-directory: ./macless_haystack
+      #   run: |
+      #     flutter build apk  --release
+      #     mv build/app/outputs/flutter-apk/app-release.apk build/app/outputs/flutter-apk/android-application.apk
+      # - name: Upload Android Artifacts
+      #   uses: actions/upload-artifact@v3
+      #   with:
+      #     name: android-application
+      #     path: ./macless_haystack/build/app/outputs/flutter-apk/android-application.apk
       - uses: actions/cache@v3
         with:
           path: |
